@@ -1,2 +1,2 @@
-Requires SDL2, Vulkan SDK, and GLM.
+Requires SDL2, LunarG Vulkan SDK, and GLM.
 

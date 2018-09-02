@@ -5,8 +5,8 @@ project(RogueEngine VERSION 0.1
 
 # SETUP
 add_executable(main main.cpp)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set_target_properties(main PROPERTIES CXX_STANDARD 17)
+target_compile_features(main PUBLIC cxx_std_17)
 
 if(MSVC)
     add_compile_options(/W3 /WX)
@@ -31,5 +31,5 @@ target_link_libraries(main ${GLM_LIBRARIES})
 
 # Engine
 add_subdirectory(engine)
-target_link_libraries(main game)
+target_link_libraries(main engine renderer)
 
