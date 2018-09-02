@@ -15,6 +15,7 @@ int main(int argc, const char *argv[])
         }
         Game game = Game();
         game.Run();
+        std::cout << "Quitting SDL..." << std::endl;
         SDL_Quit();
     }
     catch (const std::exception &e)

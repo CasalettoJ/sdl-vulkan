@@ -36,8 +36,11 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
-    vkDestroyInstance(_instance, nullptr);
+    std::cout << "Destroying logical device..." << std::endl;
     vkDestroyDevice(_logicalDevice, nullptr);
+    std::cout << "Destroying instance..." << std::endl;
+    vkDestroyInstance(_instance, nullptr);
+    std::cout << "Destroying window..." << std::endl;
     SDL_DestroyWindow(_window);
 }
 
