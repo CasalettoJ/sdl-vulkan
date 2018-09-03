@@ -1,7 +1,9 @@
 #include <stdexcept>
 #include <iostream>
 #include <SDL2/SDL.h>
-#include "game.h"
+
+#include "engine/game.h"
+#include "main.h"
 
 int main(int argc, const char *argv[])
 {

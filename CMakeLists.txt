@@ -4,7 +4,7 @@ project(RogueEngine VERSION 0.1
                     LANGUAGES CXX)
 
 # SETUP
-add_executable(main main.cpp)
+add_executable(main main.cpp main.h)
 set_target_properties(main PROPERTIES CXX_STANDARD 17)
 target_compile_features(main PUBLIC cxx_std_17)
 

@@ -11,6 +11,8 @@
 
 #include "renderer.h"
 
+// TODO https://cpppatterns.com/patterns/rule-of-five.html https://cpppatterns.com/patterns/copy-and-swap.html
+
 Renderer::Renderer()
 {
     // Create SDL Window with Vulkan
@@ -32,6 +34,10 @@ Renderer::Renderer()
     // Create a logical device for communicating with physical device
     std::cout << "Creating logical device..." << std::endl;
     createLogicalDevice();
+
+    // Create the main surface that will be used to render the game
+    std::cout << "Creating main surface..." << std::endl;
+    createMainSurface();
 }
 
 Renderer::~Renderer()
@@ -56,7 +62,7 @@ void Renderer::initVulkan()
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_0;
 
-    // Have to call it twice, to allocate room for 2 names.
+    // Have to call it twice, to allocate room for names based on count.
     // https://gist.github.com/rcgordon/ad23f873393423e1f1069502b92ad035
     if (!SDL_Vulkan_GetInstanceExtensions(_window, &extensionsCount, nullptr))
     {
@@ -193,4 +199,12 @@ void Renderer::createLogicalDevice()
     }
 
     vkGetDeviceQueue(_logicalDevice, indices.graphicsFamily, 0, &_graphicsQueue);
+}
+
+void Renderer::createMainSurface()
+{
+    if (!SDL_Vulkan_CreateSurface(_window, _instance, &_mainSurface))
+    {
+        throw std::runtime_error("Failed to create main surface!");
+    }
 }

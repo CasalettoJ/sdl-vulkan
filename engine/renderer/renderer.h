@@ -18,6 +18,7 @@ public:
     ~Renderer();
     SDL_Window* GetWindow() {return _window;}
     VkInstance GetInstance() {return _instance;}
+    VkSurfaceKHR GetMainSurface() {return _mainSurface;}
 
 private:
     const static int WIDTH = 800, HEIGHT = 600;
@@ -26,6 +27,7 @@ private:
     VkDevice _logicalDevice;
     VkQueue _graphicsQueue;
     SDL_Window* _window;
+    VkSurfaceKHR _mainSurface;
     uint extensionsCount;
     const char **extensionNames;
 
@@ -34,6 +36,7 @@ private:
     bool isDeviceSuitable(VkPhysicalDevice device);
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
     void createLogicalDevice();
+    void createMainSurface();
 };
 
 #endif
