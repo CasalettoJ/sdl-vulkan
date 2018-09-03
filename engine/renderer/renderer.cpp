@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <set>
 
 #include "renderer.h"
 
@@ -27,6 +28,10 @@ Renderer::Renderer()
     std::cout << "Initializing Vulkan..." << std::endl;
     initVulkan();
 
+    // Create the main surface that will be used to render the game
+    std::cout << "Creating main surface..." << std::endl;
+    createMainSurface();
+
     // Select a physical device for rendering
     std::cout << "Selecting physical device..." << std::endl;
     selectDevice();
@@ -34,10 +39,6 @@ Renderer::Renderer()
     // Create a logical device for communicating with physical device
     std::cout << "Creating logical device..." << std::endl;
     createLogicalDevice();
-
-    // Create the main surface that will be used to render the game
-    std::cout << "Creating main surface..." << std::endl;
-    createMainSurface();
 }
 
 Renderer::~Renderer()
@@ -156,7 +157,16 @@ QueueFamilyIndices Renderer::findQueueFamilies(VkPhysicalDevice device)
         if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT))
         {
             indices.graphicsFamily = i;
-            std::cout << "VK_QUEUE_GRAPHICS_BIT INDEX: " << i << std::endl;
+            std::cout << "VK_QUEUE_GRAPHICS_BIT Index: " << i << std::endl;
+        }
+
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, _mainSurface, &presentSupport);
+
+        if (queueFamily.queueCount > 0 && presentSupport)
+        {
+            indices.presentFamily = i;
+            std::cout << "Present Queue Family Index: " << i << std::endl;
         }
 
         if (indices.isComplete())
@@ -174,22 +184,27 @@ void Renderer::createLogicalDevice()
 {
     QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
 
-    VkDeviceQueueCreateInfo queueCreateInfo = {};
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily;
-    queueCreateInfo.queueCount = 1;
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    std::set<int> uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
 
-    // Vulkan lets you assign priorities to queues to influence the scheduling of command buffer
-    // execution using floating point numbers between 0.0 and 1.0.
-    float priority = 1.0f;
-    queueCreateInfo.pQueuePriorities = &priority;
+    float queuePriority = 1.0f;
+    // For each unique queue family (recorded indices), create a VkDeviceQueueCreateInfo to be used with VkDeviceCreateInfo for device creation.
+    for (int queueFamily : uniqueQueueFamilies)
+    {
+        VkDeviceQueueCreateInfo queueCreateInfo = {};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = queueFamily;
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
 
     VkPhysicalDeviceFeatures deviceFeatures = {};
 
     VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.pQueueCreateInfos = &queueCreateInfo;
-    createInfo.queueCreateInfoCount = 1;
+    createInfo.pQueueCreateInfos = queueCreateInfos.data();
+    createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pEnabledFeatures = &deviceFeatures;
     createInfo.enabledExtensionCount = 0;
 
@@ -199,6 +214,7 @@ void Renderer::createLogicalDevice()
     }
 
     vkGetDeviceQueue(_logicalDevice, indices.graphicsFamily, 0, &_graphicsQueue);
+    vkGetDeviceQueue(_logicalDevice, indices.presentFamily, 0, &_presentQueue);
 }
 
 void Renderer::createMainSurface()

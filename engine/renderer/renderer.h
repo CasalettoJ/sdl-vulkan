@@ -6,9 +6,10 @@
 
 struct QueueFamilyIndices {
     int graphicsFamily = -1;
+    int presentFamily = -1;
 
     bool isComplete() { 
-        return graphicsFamily >= 0;
+        return graphicsFamily >= 0 && presentFamily >= 0;
     }
 };
 
@@ -26,6 +27,7 @@ private:
     VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
     VkDevice _logicalDevice;
     VkQueue _graphicsQueue;
+    VkQueue _presentQueue;
     SDL_Window* _window;
     VkSurfaceKHR _mainSurface;
     uint extensionsCount;
