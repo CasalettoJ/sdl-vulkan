@@ -11,6 +11,8 @@
 #include <set>
 
 #include "renderer.h"
+#include "swapchain.h"
+#include "queuefamily.h"
 
 // TODO https://cpppatterns.com/patterns/rule-of-five.html https://cpppatterns.com/patterns/copy-and-swap.html
 
@@ -39,10 +41,16 @@ Renderer::Renderer()
     // Create a logical device for communicating with physical device
     std::cout << "Creating logical device..." << std::endl;
     createLogicalDevice();
+
+    // Create the initial swapchain
+    std::cout << "Creating initial current swapchain..." << std::endl;
+    Swapchain::CreateSwapchain(_window, _physicalDevice, _logicalDevice, _mainSurface, &_currentSwapchain, _swapchainImages);
 }
 
 Renderer::~Renderer()
 {
+    std::cout << "Destroying current swapchain..." << std::endl;
+    vkDestroySwapchainKHR(_logicalDevice, _currentSwapchain, nullptr);
     std::cout << "Destroying logical device..." << std::endl;
     vkDestroyDevice(_logicalDevice, nullptr);
     std::cout << "Destroying instance..." << std::endl;
@@ -63,13 +71,14 @@ void Renderer::initVulkan()
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_0;
 
+    uint extensionsCount = 0;
     // Have to call it twice, to allocate room for names based on count.
     // https://gist.github.com/rcgordon/ad23f873393423e1f1069502b92ad035
     if (!SDL_Vulkan_GetInstanceExtensions(_window, &extensionsCount, nullptr))
     {
         throw std::runtime_error("Failed to get instance extensions.");
     }
-    extensionNames = new const char *[extensionsCount];
+    const char **extensionNames = new const char *[extensionsCount];
     if (!SDL_Vulkan_GetInstanceExtensions(_window, &extensionsCount, extensionNames))
     {
         throw std::runtime_error("Failed to populate extension names.");
@@ -80,12 +89,13 @@ void Renderer::initVulkan()
         << extensionsCount
         << std::endl;
 
-    std::cout << "Names: ";
+    std::cout << "Names: " << std::endl;
+    ;
     for (uint i = 0; i < extensionsCount; i++)
     {
-        std::cout << (std::string)extensionNames[i] << " ";
+        std::cout << "\t" << (std::string)extensionNames[i] << std::endl;
+        ;
     }
-    std::cout << std::endl;
 
     VkInstanceCreateInfo instanceInfo = {};
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -98,6 +108,8 @@ void Renderer::initVulkan()
     {
         throw std::runtime_error("Failed to create Vulkan instance.");
     }
+
+    delete[] extensionNames;
 }
 
 void Renderer::selectDevice()
@@ -126,6 +138,7 @@ void Renderer::selectDevice()
             _physicalDevice = device;
             break;
         }
+        std::cout << "Device unsuitable." << std::endl;
     }
 
     if (_physicalDevice == VK_NULL_HANDLE)
@@ -136,53 +149,66 @@ void Renderer::selectDevice()
 
 bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
 {
+    std::cout << "Checking suitability of device..." << std::endl;
     // https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families
-    QueueFamilyIndices indices = findQueueFamilies(device);
-    return indices.isComplete();
+    QueueFamily::QueueFamilyIndices indices = QueueFamily::findQueueFamilies(device, _mainSurface);
+    // https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain
+    Swapchain::SwapchainSupportDetails details = Swapchain::QuerySwapchainSupport(device, _mainSurface);
+    bool swapchainSupport = !details.presentModes.empty() && !details.formats.empty();
+
+    return indices.isComplete() && checkDeviceExtensionSupport(device) && swapchainSupport;
 }
 
-QueueFamilyIndices Renderer::findQueueFamilies(VkPhysicalDevice device)
+bool Renderer::checkDeviceExtensionSupport(VkPhysicalDevice device)
 {
-    QueueFamilyIndices indices;
-
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-    int i = 0;
-    for (const VkQueueFamilyProperties &queueFamily : queueFamilies)
+    uint32_t extensionCount = 0;
+    if (vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr) != VkResult::VK_SUCCESS)
     {
-        if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT))
-        {
-            indices.graphicsFamily = i;
-            std::cout << "VK_QUEUE_GRAPHICS_BIT Index: " << i << std::endl;
-        }
-
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, _mainSurface, &presentSupport);
-
-        if (queueFamily.queueCount > 0 && presentSupport)
-        {
-            indices.presentFamily = i;
-            std::cout << "Present Queue Family Index: " << i << std::endl;
-        }
-
-        if (indices.isComplete())
-        {
-            break;
-        }
-
-        i += 1;
+        throw std::runtime_error("Failed to enumerate physical device's extension properties.");
     }
 
-    return indices;
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    if (vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data()) != VkResult::VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to populate available extentions data.");
+    }
+
+    std::cout
+        << "Got Device Extension Properties: count - "
+        << extensionCount
+        << std::endl;
+
+    std::cout << "Names: " << std::endl;
+    for (uint i = 0; i < extensionCount; i++)
+    {
+        std::cout << "\t" << (std::string)availableExtensions[i].extensionName << std::endl;
+    }
+
+    std::cout << "Checking device extensions for required support..." << std::endl;
+    uint requiredMatches = 0;
+    for (const VkExtensionProperties &extension : availableExtensions)
+    {
+        for (int i = 0; i < static_cast<int>(requiredDeviceExtensions.size()); i++)
+        {
+            std::string requiredName(requiredDeviceExtensions[i]);
+            std::string extensionName(extension.extensionName);
+            std::cout << "\t\tComparing required extension " << requiredName << " with available extension " << extensionName;
+            if (requiredName.compare(extensionName) == 0)
+            {
+                std::cout << " - (MATCH)" << std::endl;
+                requiredMatches += 1;
+                break;
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    return requiredMatches == requiredDeviceExtensions.size();
 }
 
 void Renderer::createLogicalDevice()
 {
-    QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
+    QueueFamily::QueueFamilyIndices indices = QueueFamily::findQueueFamilies(_physicalDevice, _mainSurface);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<int> uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
@@ -199,14 +225,12 @@ void Renderer::createLogicalDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures = {};
-
     VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-    createInfo.pEnabledFeatures = &deviceFeatures;
-    createInfo.enabledExtensionCount = 0;
+    createInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtensions.size());
 
     if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_logicalDevice) != VK_SUCCESS)
     {
