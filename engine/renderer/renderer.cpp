@@ -44,13 +44,13 @@ Renderer::Renderer()
 
     // Create the initial swapchain
     std::cout << "Creating initial current swapchain..." << std::endl;
-    Swapchain::CreateSwapchain(_window, _physicalDevice, _logicalDevice, _mainSurface, &_currentSwapchain, _swapchainImages);
+    _swapchainInfo = Swapchain::CreateSwapchain(_window, _physicalDevice, _logicalDevice, _mainSurface);
 }
 
 Renderer::~Renderer()
 {
     std::cout << "Destroying current swapchain..." << std::endl;
-    vkDestroySwapchainKHR(_logicalDevice, _currentSwapchain, nullptr);
+    vkDestroySwapchainKHR(_logicalDevice, _swapchainInfo.swapchain, nullptr);
     std::cout << "Destroying logical device..." << std::endl;
     vkDestroyDevice(_logicalDevice, nullptr);
     std::cout << "Destroying instance..." << std::endl;

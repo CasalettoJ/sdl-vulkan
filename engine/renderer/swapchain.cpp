@@ -123,7 +123,7 @@ VkExtent2D Swapchain::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilit
     return VkExtent2D{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 }
 
-void Swapchain::CreateSwapchain(SDL_Window *window, VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface, VkSwapchainKHR *swapchain, std::vector<VkImage> &swapchainImages)
+Swapchain::SwapchainContainer Swapchain::CreateSwapchain(SDL_Window *window, VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface)
 {
     SwapchainSupportDetails supportDetails = Swapchain::QuerySwapchainSupport(physicalDevice, surface);
 
@@ -177,18 +177,28 @@ void Swapchain::CreateSwapchain(SDL_Window *window, VkPhysicalDevice physicalDev
         createSwapchainInfo.pQueueFamilyIndices = nullptr;
     }
 
-    if (vkCreateSwapchainKHR(logicalDevice, &createSwapchainInfo, nullptr, swapchain) != VK_SUCCESS)
+
+    VkSwapchainKHR swapchain; 
+    if (vkCreateSwapchainKHR(logicalDevice, &createSwapchainInfo, nullptr, &swapchain) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create swapchain.");
     }
 
-    if (vkGetSwapchainImagesKHR(logicalDevice, *swapchain, &imageCount, nullptr) != VkResult::VK_SUCCESS)
+    if (vkGetSwapchainImagesKHR(logicalDevice, swapchain, &imageCount, nullptr) != VkResult::VK_SUCCESS)
     {
         throw std::runtime_error("Failed to get swapchain images count.");
     }
-    swapchainImages.resize(imageCount);
-    if (vkGetSwapchainImagesKHR(logicalDevice, *swapchain, &imageCount, swapchainImages.data()) != VkResult::VK_SUCCESS)
+    std::vector<VkImage> swapchainImages(imageCount);
+    if (vkGetSwapchainImagesKHR(logicalDevice, swapchain, &imageCount, swapchainImages.data()) != VkResult::VK_SUCCESS)
     {
         throw std::runtime_error("Failed to populate swapchain images.");
     }
+
+    return SwapchainContainer
+    {
+        swapchain,
+        swapchainImages,
+        format.format,
+        extent
+    };
 }

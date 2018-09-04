@@ -34,8 +34,7 @@ private:
     VkDevice _logicalDevice;
     VkQueue _graphicsQueue;
     VkQueue _presentQueue;
-    VkSwapchainKHR _currentSwapchain;
-    std::vector<VkImage> _swapchainImages;
+    Swapchain::SwapchainContainer _swapchainInfo;
     SDL_Window *_window;
     VkSurfaceKHR _mainSurface;
 
