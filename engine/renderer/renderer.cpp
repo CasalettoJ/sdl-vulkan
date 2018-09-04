@@ -186,9 +186,9 @@ bool Renderer::checkDeviceExtensionSupport(VkPhysicalDevice device)
 
     std::cout << "Checking device extensions for required support..." << std::endl;
     uint requiredMatches = 0;
-    for (const VkExtensionProperties &extension : availableExtensions)
+    for (int i = 0; i < static_cast<int>(requiredDeviceExtensions.size()); i++)
     {
-        for (int i = 0; i < static_cast<int>(requiredDeviceExtensions.size()); i++)
+        for (const VkExtensionProperties &extension : availableExtensions)
         {
             std::string requiredName(requiredDeviceExtensions[i]);
             std::string extensionName(extension.extensionName);
