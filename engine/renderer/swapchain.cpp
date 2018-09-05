@@ -194,11 +194,50 @@ Swapchain::SwapchainContainer Swapchain::CreateSwapchain(SDL_Window *window, VkP
         throw std::runtime_error("Failed to populate swapchain images.");
     }
 
-    return SwapchainContainer
+    // Create an initial set of image views
+    std::vector<VkImageView> swapchainImagesViews = Swapchain::CreateImageViews(logicalDevice, format.format, swapchainImages);
+
+    return
     {
         swapchain,
         swapchainImages,
+        swapchainImagesViews,
         format.format,
         extent
     };
+}
+
+std::vector<VkImageView> Swapchain::CreateImageViews(VkDevice logicalDevice, VkFormat swapchainFormat, std::vector<VkImage> swapchainImages)
+{
+    std::vector<VkImageView> imageViews(swapchainImages.size());
+
+    uint i = 0;
+    for (const VkImage& image: swapchainImages)
+    {
+        VkImageViewCreateInfo imageViewCreateInfo = {};
+        imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewCreateInfo.image = image;
+        imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        imageViewCreateInfo.format = swapchainFormat;
+
+        imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+        imageViewCreateInfo.subresourceRange.levelCount = 1;
+        imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewCreateInfo.subresourceRange.layerCount = 1;
+
+        if (vkCreateImageView(logicalDevice, &imageViewCreateInfo, nullptr, &imageViews[i]) != VkResult::VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create imageview for index");
+        }
+
+        i += 1;
+    }
+
+    return imageViews;
 }

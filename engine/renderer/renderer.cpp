@@ -49,6 +49,11 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
+    std::cout << "Destroying current image views..." << std::endl;
+    for (VkImageView imageView: _swapchainInfo.imageViews)
+    {
+        vkDestroyImageView(_logicalDevice, imageView, nullptr);
+    }
     std::cout << "Destroying current swapchain..." << std::endl;
     vkDestroySwapchainKHR(_logicalDevice, _swapchainInfo.swapchain, nullptr);
     std::cout << "Destroying logical device..." << std::endl;
