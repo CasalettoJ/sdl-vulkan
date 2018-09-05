@@ -8,41 +8,27 @@
 #include <string>
 
 #include "swapchain.h"
+#include "renderdevice.h"
 
 class Renderer
 {
-public:
+  public:
     Renderer();
     ~Renderer();
     SDL_Window *GetWindow() { return _window; }
     VkInstance GetInstance() { return _instance; }
     VkSurfaceKHR GetMainSurface() { return _mainSurface; }
 
-private:
+  private:
     const int WIDTH = 800, HEIGHT = 600;
 
-    // https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain
-    const std::vector<const char *> requiredDeviceExtensions = {
-#if __APPLE__
-        // If there is no moltenvk support this ain't gonna work on macOS.
-        "VK_MVK_moltenvk",
-#endif
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-
     VkInstance _instance;
-    VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
-    VkDevice _logicalDevice;
-    VkQueue _graphicsQueue;
-    VkQueue _presentQueue;
-    Swapchain::SwapchainContainer _swapchainInfo;
     SDL_Window *_window;
     VkSurfaceKHR _mainSurface;
+    RenderDevice::DeviceContainer _deviceInfo;
+    Swapchain::SwapchainContainer _swapchainInfo;
 
     void initVulkan();
-    void selectDevice();
-    bool isDeviceSuitable(VkPhysicalDevice device);
-    bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-    void createLogicalDevice();
     void createMainSurface();
 };
 

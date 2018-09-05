@@ -8,7 +8,6 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
-#include <set>
 
 #include "renderer.h"
 #include "swapchain.h"
@@ -34,17 +33,13 @@ Renderer::Renderer()
     std::cout << "Creating main surface..." << std::endl;
     createMainSurface();
 
-    // Select a physical device for rendering
-    std::cout << "Selecting physical device..." << std::endl;
-    selectDevice();
-
-    // Create a logical device for communicating with physical device
-    std::cout << "Creating logical device..." << std::endl;
-    createLogicalDevice();
+    // Setup physical/logical devices and get queue families
+    std::cout << "Setting up devices and queue families..." << std::endl;
+    _deviceInfo = RenderDevice::GetDeviceSetup(_instance, _mainSurface);
 
     // Create the initial swapchain
     std::cout << "Creating initial current swapchain..." << std::endl;
-    _swapchainInfo = Swapchain::CreateSwapchain(_window, _physicalDevice, _logicalDevice, _mainSurface);
+    _swapchainInfo = Swapchain::CreateSwapchain(_window, _deviceInfo.physicalDevice, _deviceInfo.logicalDevice, _mainSurface);
 }
 
 Renderer::~Renderer()
@@ -52,12 +47,12 @@ Renderer::~Renderer()
     std::cout << "Destroying current image views..." << std::endl;
     for (VkImageView imageView: _swapchainInfo.imageViews)
     {
-        vkDestroyImageView(_logicalDevice, imageView, nullptr);
+        vkDestroyImageView(_deviceInfo.logicalDevice, imageView, nullptr);
     }
     std::cout << "Destroying current swapchain..." << std::endl;
-    vkDestroySwapchainKHR(_logicalDevice, _swapchainInfo.swapchain, nullptr);
+    vkDestroySwapchainKHR(_deviceInfo.logicalDevice, _swapchainInfo.swapchain, nullptr);
     std::cout << "Destroying logical device..." << std::endl;
-    vkDestroyDevice(_logicalDevice, nullptr);
+    vkDestroyDevice(_deviceInfo.logicalDevice, nullptr);
     std::cout << "Destroying instance..." << std::endl;
     vkDestroyInstance(_instance, nullptr);
     std::cout << "Destroying window..." << std::endl;
@@ -117,134 +112,6 @@ void Renderer::initVulkan()
     delete[] extensionNames;
 }
 
-void Renderer::selectDevice()
-{
-    uint32_t deviceCount = 0;
-    if (vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr) != VkResult::VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to enumerate physical devices.");
-    }
-
-    if (deviceCount == 0)
-    {
-        throw std::runtime_error("Failed to find GPUs with Vulkan support!");
-    }
-
-    std::vector<VkPhysicalDevice> devices(deviceCount);
-    if (vkEnumeratePhysicalDevices(_instance, &deviceCount, devices.data()) != VkResult::VK_SUCCESS)
-    {
-        throw std::runtime_error("Unable to create vector of physical devices.");
-    }
-
-    for (const VkPhysicalDevice &device : devices)
-    {
-        if (isDeviceSuitable(device))
-        {
-            _physicalDevice = device;
-            break;
-        }
-        std::cout << "Device unsuitable." << std::endl;
-    }
-
-    if (_physicalDevice == VK_NULL_HANDLE)
-    {
-        throw std::runtime_error("Failed to find a suitable GPU.");
-    }
-}
-
-bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
-{
-    std::cout << "Checking suitability of device..." << std::endl;
-    // https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families
-    QueueFamily::QueueFamilyIndices indices = QueueFamily::findQueueFamilies(device, _mainSurface);
-    // https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain
-    Swapchain::SwapchainSupportDetails details = Swapchain::QuerySwapchainSupport(device, _mainSurface);
-    bool swapchainSupport = !details.presentModes.empty() && !details.formats.empty();
-
-    return indices.isComplete() && checkDeviceExtensionSupport(device) && swapchainSupport;
-}
-
-bool Renderer::checkDeviceExtensionSupport(VkPhysicalDevice device)
-{
-    uint32_t extensionCount = 0;
-    if (vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr) != VkResult::VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to enumerate physical device's extension properties.");
-    }
-
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    if (vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data()) != VkResult::VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to populate available extentions data.");
-    }
-
-    std::cout
-        << "Got Device Extension Properties: count - "
-        << extensionCount
-        << std::endl;
-
-    std::cout << "Names: " << std::endl;
-    for (uint i = 0; i < extensionCount; i++)
-    {
-        std::cout << "\t" << (std::string)availableExtensions[i].extensionName << std::endl;
-    }
-
-    std::cout << "Checking device extensions for required support..." << std::endl;
-    uint requiredMatches = 0;
-    for (int i = 0; i < static_cast<int>(requiredDeviceExtensions.size()); i++)
-    {
-        for (const VkExtensionProperties &extension : availableExtensions)
-        {
-            std::string requiredName(requiredDeviceExtensions[i]);
-            std::string extensionName(extension.extensionName);
-            std::cout << "\t\tComparing required extension " << requiredName << " with available extension " << extensionName;
-            if (requiredName.compare(extensionName) == 0)
-            {
-                std::cout << " - (MATCH)" << std::endl;
-                requiredMatches += 1;
-                break;
-            }
-            std::cout << std::endl;
-        }
-    }
-
-    return requiredMatches == requiredDeviceExtensions.size();
-}
-
-void Renderer::createLogicalDevice()
-{
-    QueueFamily::QueueFamilyIndices indices = QueueFamily::findQueueFamilies(_physicalDevice, _mainSurface);
-
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<int> uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
-
-    float queuePriority = 1.0f;
-    // For each unique queue family (recorded indices), create a VkDeviceQueueCreateInfo to be used with VkDeviceCreateInfo for device creation.
-    for (int queueFamily : uniqueQueueFamilies)
-    {
-        VkDeviceQueueCreateInfo queueCreateInfo = {};
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = queueFamily;
-        queueCreateInfo.queueCount = 1;
-        queueCreateInfo.pQueuePriorities = &queuePriority;
-        queueCreateInfos.push_back(queueCreateInfo);
-    }
-
-    VkDeviceCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.pQueueCreateInfos = queueCreateInfos.data();
-    createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-    createInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtensions.size());
-
-    if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_logicalDevice) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to create logical device!");
-    }
-
-    vkGetDeviceQueue(_logicalDevice, indices.graphicsFamily, 0, &_graphicsQueue);
-    vkGetDeviceQueue(_logicalDevice, indices.presentFamily, 0, &_presentQueue);
-}
 
 void Renderer::createMainSurface()
 {

@@ -6,13 +6,14 @@
 
 #include "renderer/renderer.h"
 
-class Game {
-public:
+class Game
+{
+  public:
     Game();
     ~Game();
     void Run();
 
-private:
+  private:
     Renderer _renderer;
 
     bool handleEvent(SDL_Event e);

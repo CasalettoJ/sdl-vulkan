@@ -21,7 +21,6 @@ QueueFamily::QueueFamilyIndices QueueFamily::findQueueFamilies(VkPhysicalDevice 
         if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT))
         {
             indices.graphicsFamily = i;
-            std::cout << "VK_QUEUE_GRAPHICS_BIT Index: " << i << std::endl;
         }
 
         VkBool32 presentSupport = false;
@@ -30,7 +29,6 @@ QueueFamily::QueueFamilyIndices QueueFamily::findQueueFamilies(VkPhysicalDevice 
         if (queueFamily.queueCount > 0 && presentSupport)
         {
             indices.presentFamily = i;
-            std::cout << "Present Queue Family Index: " << i << std::endl;
         }
 
         if (indices.isComplete())

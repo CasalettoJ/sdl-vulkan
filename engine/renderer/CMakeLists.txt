@@ -5,6 +5,8 @@ renderer
     STATIC
         queuefamily.cpp
         queuefamily.h
+        renderdevice.cpp
+        renderdevice.h
         renderer.cpp
         renderer.h
         swapchain.cpp
