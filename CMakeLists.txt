@@ -31,5 +31,7 @@ target_link_libraries(main ${GLM_LIBRARIES})
 
 # Engine
 add_subdirectory(engine)
-target_link_libraries(main engine renderer)
+target_link_libraries(main engine renderer systems)
 
+# Assets
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

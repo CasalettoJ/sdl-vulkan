@@ -11,7 +11,9 @@ renderer
         renderer.h
         swapchain.cpp
         swapchain.h
+        pipeline.cpp
+        pipeline.h
 )
-target_include_directories(renderer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(renderer INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(renderer PROPERTIES CXX_STANDARD 17)
 target_compile_features(renderer PUBLIC cxx_std_17)

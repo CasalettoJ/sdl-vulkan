@@ -12,6 +12,7 @@
 #include "renderer.h"
 #include "swapchain.h"
 #include "queuefamily.h"
+#include "pipeline.h"
 
 // TODO https://cpppatterns.com/patterns/rule-of-five.html https://cpppatterns.com/patterns/copy-and-swap.html
 
@@ -40,6 +41,9 @@ Renderer::Renderer()
     // Create the initial swapchain
     std::cout << "Creating initial current swapchain..." << std::endl;
     _swapchainInfo = Swapchain::CreateSwapchain(_window, _deviceInfo.physicalDevice, _deviceInfo.logicalDevice, _mainSurface);
+
+    // Graphics Pipelines
+    Pipeline::CreateGraphicsPipeline();
 }
 
 Renderer::~Renderer()
