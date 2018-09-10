@@ -9,6 +9,7 @@
 
 #include "swapchain.h"
 #include "renderdevice.h"
+#include "pipeline.h"
 
 class Renderer
 {
@@ -27,6 +28,7 @@ class Renderer
     VkSurfaceKHR _mainSurface;
     RenderDevice::DeviceContainer _deviceInfo;
     Swapchain::SwapchainContainer _swapchainInfo;
+    Pipeline::ConstructedPipeline _demoPipeline;
 
     void initVulkan();
     void createMainSurface();

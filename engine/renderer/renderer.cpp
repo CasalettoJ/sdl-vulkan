@@ -43,11 +43,15 @@ Renderer::Renderer()
     _swapchainInfo = Swapchain::CreateSwapchain(_window, _deviceInfo.physicalDevice, _deviceInfo.logicalDevice, _mainSurface);
 
     // Graphics Pipelines
-    Pipeline::CreateGraphicsPipeline();
+    _demoPipeline = Pipeline::CreateGraphicsPipeline(_deviceInfo.logicalDevice, _swapchainInfo.extent, _swapchainInfo.format);
 }
 
 Renderer::~Renderer()
 {
+    std::cout << "Destroying pipeline layout..." << std::endl;
+    vkDestroyPipelineLayout(_deviceInfo.logicalDevice, _demoPipeline.layout, nullptr);
+    std::cout << "Destroying render pass..." << std::endl;
+    vkDestroyRenderPass(_deviceInfo.logicalDevice, _demoPipeline.renderPass, nullptr);
     std::cout << "Destroying current image views..." << std::endl;
     for (VkImageView imageView: _swapchainInfo.imageViews)
     {
