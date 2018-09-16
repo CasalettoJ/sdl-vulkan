@@ -20,6 +20,7 @@ Pipeline::ConstructedPipeline Pipeline::CreateGraphicsPipeline(const VkDevice &l
     // 10. Dynamic State -- Handling dynamic structs in pipeline (like viewport)
     // 11. Pipeline Layout -- uniform values need to be specified during pipeline creation by creating a VkPipelineLayout object
     // 12. Render Pass --  how many color and depth buffers there will be, how many samples to use for each of them and how their contents should be handled throughout the rendering operations.
+    // 13. Pipeline Construction -- putting it all together
     Pipeline::ConstructedPipeline constructedPipeline;
 
     // 1 Shader Modules
@@ -125,6 +126,37 @@ Pipeline::ConstructedPipeline Pipeline::CreateGraphicsPipeline(const VkDevice &l
 
     // 12 Render Pass
     constructedPipeline.renderPass = Pipeline::CreateRenderPass(logicalDevice, format);
+
+    // 13 Pipeline Construction
+    VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
+    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    // Shader stage
+    pipelineCreateInfo.stageCount = 2;
+    pipelineCreateInfo.pStages = pipelineShaderSteps;
+    // Vertext Input
+    pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+    // Input Assembly
+    pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
+    // Viewport
+    pipelineCreateInfo.pViewportState = &viewportState;
+    // Rasterization
+    pipelineCreateInfo.pRasterizationState = &rasterizer;
+    // Multisample
+    pipelineCreateInfo.pMultisampleState = &multisampling;
+    // Depth and Stencil -- Skipped
+    // Color Blending
+    pipelineCreateInfo.pColorBlendState = &colorBlending;
+    // Dynamic State -- skipped
+    // Pipeline Layout
+    pipelineCreateInfo.layout = pipelineLayout;
+    // Render Pass
+    pipelineCreateInfo.renderPass = constructedPipeline.renderPass;
+    pipelineCreateInfo.subpass = 0;
+
+    if (vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &constructedPipeline.pipeline) != VkResult::VK_SUCCESS)
+    {
+        std::runtime_error("Failed to create graphics pipeline.");
+    }
 
     vkDestroyShaderModule(logicalDevice, vertShader, nullptr);
     vkDestroyShaderModule(logicalDevice, fragShader, nullptr);

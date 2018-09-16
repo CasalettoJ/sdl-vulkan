@@ -48,6 +48,13 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
+    std::cout << "Destroying framebuffers..." << std::endl;
+    for (VkFramebuffer &frameBuffer: _frameBuffers)
+    {
+        vkDestroyFramebuffer(_deviceInfo.logicalDevice, frameBuffer, nullptr);
+    }
+    std::cout << "Destroying Graphics Pipeline..." << std::endl;
+    vkDestroyPipeline(_deviceInfo.logicalDevice, _demoPipeline.pipeline, nullptr);
     std::cout << "Destroying pipeline layout..." << std::endl;
     vkDestroyPipelineLayout(_deviceInfo.logicalDevice, _demoPipeline.layout, nullptr);
     std::cout << "Destroying render pass..." << std::endl;
@@ -126,5 +133,29 @@ void Renderer::createMainSurface()
     if (!SDL_Vulkan_CreateSurface(_window, _instance, &_mainSurface))
     {
         throw std::runtime_error("Failed to create main surface!");
+    }
+}
+
+void Renderer::CreateFramebuffers(VkDevice logicalDevice, VkExtent2D extent, std::vector<VkImageView> imageViews, VkRenderPass &renderpass)
+{
+    _frameBuffers.resize(imageViews.size());
+
+    for(uint i = 0; i < imageViews.size(); i++)
+    {
+        VkImageView attachment = imageViews[i];
+
+        VkFramebufferCreateInfo fbCreateInfo = {};
+        fbCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fbCreateInfo.renderPass = renderpass;
+        fbCreateInfo.attachmentCount = 1;
+        fbCreateInfo.pAttachments = &attachment;
+        fbCreateInfo.width = extent.width;
+        fbCreateInfo.height = extent.height;
+        fbCreateInfo.layers = 1;
+
+        if (vkCreateFramebuffer(logicalDevice, &fbCreateInfo, nullptr, &_frameBuffers[i]) != VkResult::VK_SUCCESS)
+        {
+            throw std::runtime_error("Error creating framebuffer.");
+        }
     }
 }

@@ -11,7 +11,7 @@ target_compile_features(main PUBLIC cxx_std_17)
 if(MSVC)
     add_compile_options(/W3 /WX)
 else()
-    add_compile_options(-Wall -Wextra -Werror -pedantic)
+    add_compile_options(-Wall -Wextra -Werror -pedantic -O0)
 endif()
 
 # SDL2

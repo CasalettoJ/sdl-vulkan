@@ -12,6 +12,7 @@ namespace Pipeline
     {
         VkPipelineLayout layout;
         VkRenderPass renderPass;
+        VkPipeline pipeline;
     };
 
     ConstructedPipeline CreateGraphicsPipeline(const VkDevice &logicalDevice, const VkExtent2D &extent, const VkFormat &format);

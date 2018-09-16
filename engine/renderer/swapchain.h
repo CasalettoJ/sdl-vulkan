@@ -25,10 +25,10 @@ struct SwapchainContainer
 
 SwapchainSupportDetails QuerySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
 VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
-VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
+VkPresentModeKHR ChooseSwapPresentMode(std::vector<VkPresentModeKHR> availablePresentModes);
 VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, SDL_Window *window);
 SwapchainContainer CreateSwapchain(SDL_Window *window, VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface);
-std::vector<VkImageView> CreateImageViews(VkDevice logicalDevice, VkFormat swapchainFormat, const std::vector<VkImage> swapchainImages);
+std::vector<VkImageView> CreateImageViews(VkDevice logicalDevice, VkFormat swapchainFormat, std::vector<VkImage> swapchainImages);
 } // namespace Swapchain
 
 #endif
