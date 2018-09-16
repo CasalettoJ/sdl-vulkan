@@ -43,13 +43,26 @@ Renderer::Renderer()
     _swapchainInfo = Swapchain::CreateSwapchain(_window, _deviceInfo.physicalDevice, _deviceInfo.logicalDevice, _mainSurface);
 
     // Graphics Pipelines
+    std::cout << "Creating initial pipeline..." << std::endl;
     _demoPipeline = Pipeline::CreateGraphicsPipeline(_deviceInfo.logicalDevice, _swapchainInfo.extent, _swapchainInfo.format);
+
+    // Framebuffers
+    std::cout << "Setting up framebuffers..." << std::endl;
+    _swapchainInfo.framebuffers = Swapchain::CreateFramebuffers(_deviceInfo.logicalDevice, _swapchainInfo.extent, _swapchainInfo.imageViews, _demoPipeline.renderPass);
+
+    // Command pool and command buffers
+    std::cout << "Setting up command pool and command buffers..." << std::endl;
+    createCommandPool();
 }
 
 Renderer::~Renderer()
 {
+    std::cout << "Waiting for rendering to complete..." << std::endl;
+    vkDeviceWaitIdle(_deviceInfo.logicalDevice);
+    std::cout << "Destroying command pool..." << std::endl;
+    vkDestroyCommandPool(_deviceInfo.logicalDevice, _commandPool, nullptr);
     std::cout << "Destroying framebuffers..." << std::endl;
-    for (VkFramebuffer &frameBuffer: _frameBuffers)
+    for (VkFramebuffer &frameBuffer: _swapchainInfo.framebuffers)
     {
         vkDestroyFramebuffer(_deviceInfo.logicalDevice, frameBuffer, nullptr);
     }
@@ -136,26 +149,21 @@ void Renderer::createMainSurface()
     }
 }
 
-void Renderer::CreateFramebuffers(VkDevice logicalDevice, VkExtent2D extent, std::vector<VkImageView> imageViews, VkRenderPass &renderpass)
+// We have to create a command pool before we can create command buffers. 
+// Command pools manage the memory that is used to store the buffers and command buffers are allocated from them.
+void Renderer::createCommandPool()
 {
-    _frameBuffers.resize(imageViews.size());
+    QueueFamily::QueueFamilyIndices queueFamilyIndices = QueueFamily::findQueueFamilies(_deviceInfo.physicalDevice, _mainSurface);
 
-    for(uint i = 0; i < imageViews.size(); i++)
+    VkCommandPoolCreateInfo commandPoolInfo = {};
+    commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    // Command buffers are executed by submitting them on one of the device queues, like the graphics and presentation queues we retrieved. 
+    // Each command pool can only allocate command buffers that are submitted on a single type of queue. 
+    // We're going to record commands for drawing, which is why we've chosen the graphics queue family.
+    commandPoolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+
+    if (vkCreateCommandPool(_deviceInfo.logicalDevice, &commandPoolInfo, nullptr, &_commandPool) != VkResult::VK_SUCCESS)
     {
-        VkImageView attachment = imageViews[i];
-
-        VkFramebufferCreateInfo fbCreateInfo = {};
-        fbCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fbCreateInfo.renderPass = renderpass;
-        fbCreateInfo.attachmentCount = 1;
-        fbCreateInfo.pAttachments = &attachment;
-        fbCreateInfo.width = extent.width;
-        fbCreateInfo.height = extent.height;
-        fbCreateInfo.layers = 1;
-
-        if (vkCreateFramebuffer(logicalDevice, &fbCreateInfo, nullptr, &_frameBuffers[i]) != VkResult::VK_SUCCESS)
-        {
-            throw std::runtime_error("Error creating framebuffer.");
-        }
+        throw std::runtime_error("Failed to create command pool.");
     }
 }

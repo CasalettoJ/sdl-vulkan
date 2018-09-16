@@ -65,7 +65,7 @@ For the color space we'll use SRGB if it is available, because it results in mor
 Working directly with SRGB colors is a little bit challenging, so we'll use standard RGB for the color format,
 of which one of the most common ones is VK_FORMAT_B8G8R8A8_UNORM.
 */
-VkSurfaceFormatKHR Swapchain::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
+VkSurfaceFormatKHR Swapchain::ChooseSwapSurfaceFormat(std::vector<VkSurfaceFormatKHR> availableFormats)
 {
     // The best case scenario is that the surface has no preferred format, which Vulkan indicates by only
     // returning one VkSurfaceFormatKHR entry which has its format member set to VK_FORMAT_UNDEFINED.
@@ -109,7 +109,7 @@ VkPresentModeKHR Swapchain::ChooseSwapPresentMode(const std::vector<VkPresentMod
     return bestModeChoice;
 }
 
-VkExtent2D Swapchain::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, SDL_Window *window)
+VkExtent2D Swapchain::ChooseSwapExtent(VkSurfaceCapabilitiesKHR capabilities, SDL_Window *window)
 {
     // Some window managers do allow us to differ here and this is indicated by setting the width and height in currentExtent to a special value:
     // the maximum value of uint32_t.
@@ -203,7 +203,8 @@ Swapchain::SwapchainContainer Swapchain::CreateSwapchain(SDL_Window *window, VkP
         swapchainImages,
         swapchainImagesViews,
         format.format,
-        extent
+        extent,
+        std::vector<VkFramebuffer>(0)
     };
 }
 
@@ -240,4 +241,30 @@ std::vector<VkImageView> Swapchain::CreateImageViews(VkDevice logicalDevice, VkF
     }
 
     return imageViews;
+}
+
+std::vector<VkFramebuffer> Swapchain::CreateFramebuffers(VkDevice logicalDevice, VkExtent2D extent, std::vector<VkImageView> imageViews, VkRenderPass renderPass)
+{
+    std::vector<VkFramebuffer> framebuffers(imageViews.size());
+
+    for(uint i = 0; i < imageViews.size(); i++)
+    {
+        VkImageView attachment = imageViews[i];
+
+        VkFramebufferCreateInfo fbCreateInfo = {};
+        fbCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fbCreateInfo.renderPass = renderPass;
+        fbCreateInfo.attachmentCount = 1;
+        fbCreateInfo.pAttachments = &attachment;
+        fbCreateInfo.width = extent.width;
+        fbCreateInfo.height = extent.height;
+        fbCreateInfo.layers = 1;
+
+        if (vkCreateFramebuffer(logicalDevice, &fbCreateInfo, nullptr, &framebuffers[i]) != VkResult::VK_SUCCESS)
+        {
+            throw std::runtime_error("Error creating framebuffer.");
+        }
+    }
+
+    return framebuffers;
 }

@@ -29,11 +29,13 @@ class Renderer
     RenderDevice::DeviceContainer _deviceInfo;
     Swapchain::SwapchainContainer _swapchainInfo;
     Pipeline::ConstructedPipeline _demoPipeline;
-    std::vector<VkFramebuffer> _frameBuffers;
+    VkCommandPool _commandPool;
+    std::vector<VkCommandBuffer> _commandBuffers;
 
     void initVulkan();
     void createMainSurface();
-    void CreateFramebuffers(VkDevice logicalDevice, VkExtent2D extent, std::vector<VkImageView> imageViews, VkRenderPass &renderpass);
+    void createCommandPool();
+    void createCommandBuffers();
 };
 
 #endif
