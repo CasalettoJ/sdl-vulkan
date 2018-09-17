@@ -59,4 +59,5 @@ void Game::update()
 void Game::render()
 {
     // Render Logic Here
+    _renderer.DrawFrame();
 }

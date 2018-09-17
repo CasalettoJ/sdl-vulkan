@@ -54,12 +54,19 @@ Renderer::Renderer()
     std::cout << "Setting up command pool and command buffers..." << std::endl;
     createCommandPool();
     createCommandBuffers();
+
+    // Create semaphores used for rendering
+    std::cout << "Creating render semaphores..." << std::endl;
+    createSemaphores();
 }
 
 Renderer::~Renderer()
 {
     std::cout << "Waiting for rendering to complete..." << std::endl;
     vkDeviceWaitIdle(_deviceInfo.logicalDevice);
+    std::cout << "Destroying semaphores..." << std::endl;
+    vkDestroySemaphore(_deviceInfo.logicalDevice, _imageAvailable, nullptr);
+    vkDestroySemaphore(_deviceInfo.logicalDevice, _renderFinished, nullptr);
     std::cout << "Destroying command pool..." << std::endl;
     vkDestroyCommandPool(_deviceInfo.logicalDevice, _commandPool, nullptr);
     std::cout << "Destroying framebuffers..." << std::endl;
@@ -86,6 +93,44 @@ Renderer::~Renderer()
     vkDestroyInstance(_instance, nullptr);
     std::cout << "Destroying window..." << std::endl;
     SDL_DestroyWindow(_window);
+}
+
+void Renderer::DrawFrame()
+{
+    uint32_t imageIndex;
+    // Using the maximum value of a 64 bit unsigned integer disables the timeout.
+    vkAcquireNextImageKHR(_deviceInfo.logicalDevice, _swapchainInfo.swapchain, std::numeric_limits<uint64_t>::max(), _imageAvailable, VK_NULL_HANDLE, &imageIndex);
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore waitSemaphores[] = {_imageAvailable};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &_commandBuffers[imageIndex];
+
+    VkSemaphore signalSemaphores[] = {_renderFinished};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+
+    if (vkQueueSubmit(_deviceInfo.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VkResult::VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to submit draw command buffer to graphics queue.");
+    }
+
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores;
+
+    VkSwapchainKHR swapchains[] = {_swapchainInfo.swapchain};
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapchains;
+    presentInfo.pImageIndices = &imageIndex;
+
+    vkQueuePresentKHR(_deviceInfo.presentQueue, &presentInfo);
 }
 
 void Renderer::initVulkan()
@@ -200,7 +245,7 @@ void Renderer::createCommandBuffers()
         renderPassInfo.renderArea.extent = _swapchainInfo.extent;
         renderPassInfo.renderArea.offset = {0, 0};
 
-        VkClearValue clearValue = {0.0f,0.0f,0.0f,1.0f};
+        VkClearValue clearValue = {0.0f, 0.0f, 0.0f, 1.0f};
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearValue;
 
@@ -216,5 +261,17 @@ void Renderer::createCommandBuffers()
         {
             throw std::runtime_error("Failed to end command buffer recording.");
         }
+    }
+}
+
+void Renderer::createSemaphores()
+{
+    VkSemaphoreCreateInfo semaphoreInfo = {};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    if (vkCreateSemaphore(_deviceInfo.logicalDevice, &semaphoreInfo, nullptr, &_imageAvailable) != VkResult::VK_SUCCESS 
+        || vkCreateSemaphore(_deviceInfo.logicalDevice, &semaphoreInfo, nullptr, &_renderFinished) != VkResult::VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create render semaphores.");
     }
 }

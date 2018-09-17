@@ -19,6 +19,7 @@ class Renderer
     SDL_Window *GetWindow() { return _window; }
     VkInstance GetInstance() { return _instance; }
     VkSurfaceKHR GetMainSurface() { return _mainSurface; }
+    void DrawFrame();
 
   private:
     const int WIDTH = 800, HEIGHT = 600;
@@ -31,11 +32,14 @@ class Renderer
     Pipeline::ConstructedPipeline _demoPipeline;
     VkCommandPool _commandPool;
     std::vector<VkCommandBuffer> _commandBuffers;
+    VkSemaphore _imageAvailable;
+    VkSemaphore _renderFinished;
 
     void initVulkan();
     void createMainSurface();
     void createCommandPool();
     void createCommandBuffers();
+    void createSemaphores();
 };
 
 #endif
