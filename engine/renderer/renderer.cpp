@@ -53,6 +53,7 @@ Renderer::Renderer()
     // Command pool and command buffers
     std::cout << "Setting up command pool and command buffers..." << std::endl;
     createCommandPool();
+    createCommandBuffers();
 }
 
 Renderer::~Renderer()
@@ -62,7 +63,7 @@ Renderer::~Renderer()
     std::cout << "Destroying command pool..." << std::endl;
     vkDestroyCommandPool(_deviceInfo.logicalDevice, _commandPool, nullptr);
     std::cout << "Destroying framebuffers..." << std::endl;
-    for (VkFramebuffer &frameBuffer: _swapchainInfo.framebuffers)
+    for (VkFramebuffer &frameBuffer : _swapchainInfo.framebuffers)
     {
         vkDestroyFramebuffer(_deviceInfo.logicalDevice, frameBuffer, nullptr);
     }
@@ -73,7 +74,7 @@ Renderer::~Renderer()
     std::cout << "Destroying render pass..." << std::endl;
     vkDestroyRenderPass(_deviceInfo.logicalDevice, _demoPipeline.renderPass, nullptr);
     std::cout << "Destroying current image views..." << std::endl;
-    for (VkImageView imageView: _swapchainInfo.imageViews)
+    for (VkImageView imageView : _swapchainInfo.imageViews)
     {
         vkDestroyImageView(_deviceInfo.logicalDevice, imageView, nullptr);
     }
@@ -140,7 +141,6 @@ void Renderer::initVulkan()
     delete[] extensionNames;
 }
 
-
 void Renderer::createMainSurface()
 {
     if (!SDL_Vulkan_CreateSurface(_window, _instance, &_mainSurface))
@@ -149,7 +149,7 @@ void Renderer::createMainSurface()
     }
 }
 
-// We have to create a command pool before we can create command buffers. 
+// We have to create a command pool before we can create command buffers.
 // Command pools manage the memory that is used to store the buffers and command buffers are allocated from them.
 void Renderer::createCommandPool()
 {
@@ -157,13 +157,64 @@ void Renderer::createCommandPool()
 
     VkCommandPoolCreateInfo commandPoolInfo = {};
     commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    // Command buffers are executed by submitting them on one of the device queues, like the graphics and presentation queues we retrieved. 
-    // Each command pool can only allocate command buffers that are submitted on a single type of queue. 
+    // Command buffers are executed by submitting them on one of the device queues, like the graphics and presentation queues we retrieved.
+    // Each command pool can only allocate command buffers that are submitted on a single type of queue.
     // We're going to record commands for drawing, which is why we've chosen the graphics queue family.
     commandPoolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 
     if (vkCreateCommandPool(_deviceInfo.logicalDevice, &commandPoolInfo, nullptr, &_commandPool) != VkResult::VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create command pool.");
+    }
+}
+
+void Renderer::createCommandBuffers()
+{
+    _commandBuffers.resize(_swapchainInfo.framebuffers.size());
+    VkCommandBufferAllocateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    bufferInfo.commandPool = _commandPool;
+    bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    bufferInfo.commandBufferCount = static_cast<uint32_t>(_commandBuffers.size());
+
+    if (vkAllocateCommandBuffers(_deviceInfo.logicalDevice, &bufferInfo, _commandBuffers.data()) != VkResult::VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create command buffers.");
+    }
+
+    for (uint i = 0; i < _commandBuffers.size(); i++)
+    {
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+        if (vkBeginCommandBuffer(_commandBuffers[i], &beginInfo) != VkResult::VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to begin command buffer recording");
+        }
+
+        VkRenderPassBeginInfo renderPassInfo = {};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = _demoPipeline.renderPass;
+        renderPassInfo.framebuffer = _swapchainInfo.framebuffers[i];
+        renderPassInfo.renderArea.extent = _swapchainInfo.extent;
+        renderPassInfo.renderArea.offset = {0, 0};
+
+        VkClearValue clearValue = {0.0f,0.0f,0.0f,1.0f};
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearValue;
+
+        vkCmdBeginRenderPass(_commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, _demoPipeline.pipeline);
+        // 3 - 3 vertices to draw for triangle
+        // 1 - not using instanced rendering
+        // 0 - offset for vertex buffer and instanced rendering
+        vkCmdDraw(_commandBuffers[i], 3, 1, 0, 0);
+        vkCmdEndRenderPass(_commandBuffers[i]);
+
+        if (vkEndCommandBuffer(_commandBuffers[i]) != VkResult::VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to end command buffer recording.");
+        }
     }
 }
