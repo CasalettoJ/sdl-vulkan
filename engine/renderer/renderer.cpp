@@ -57,7 +57,7 @@ Renderer::Renderer()
 
     // Create semaphores used for rendering
     std::cout << "Creating render semaphores..." << std::endl;
-    createSemaphores();
+    createSyncObjects();
 }
 
 Renderer::~Renderer()
@@ -65,8 +65,12 @@ Renderer::~Renderer()
     std::cout << "Waiting for rendering to complete..." << std::endl;
     vkDeviceWaitIdle(_deviceInfo.logicalDevice);
     std::cout << "Destroying semaphores..." << std::endl;
-    vkDestroySemaphore(_deviceInfo.logicalDevice, _imageAvailable, nullptr);
-    vkDestroySemaphore(_deviceInfo.logicalDevice, _renderFinished, nullptr);
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        vkDestroySemaphore(_deviceInfo.logicalDevice, _imageAvailableSemaphores[i], nullptr);
+        vkDestroySemaphore(_deviceInfo.logicalDevice, _renderFinishedSemaphores[i], nullptr);
+        vkDestroyFence(_deviceInfo.logicalDevice, _inFlightFences[i], nullptr);
+    }
     std::cout << "Destroying command pool..." << std::endl;
     vkDestroyCommandPool(_deviceInfo.logicalDevice, _commandPool, nullptr);
     std::cout << "Destroying framebuffers..." << std::endl;
@@ -97,13 +101,17 @@ Renderer::~Renderer()
 
 void Renderer::DrawFrame()
 {
+    vkWaitForFences(_deviceInfo.logicalDevice, 1, &_inFlightFences[_currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
+    // Unlike the semaphores, we manually need to restore the fence to the unsignaled state by resetting it with the vkResetFences call.
+    vkResetFences(_deviceInfo.logicalDevice, 1, &_inFlightFences[_currentFrame]);
+
     uint32_t imageIndex;
     // Using the maximum value of a 64 bit unsigned integer disables the timeout.
-    vkAcquireNextImageKHR(_deviceInfo.logicalDevice, _swapchainInfo.swapchain, std::numeric_limits<uint64_t>::max(), _imageAvailable, VK_NULL_HANDLE, &imageIndex);
+    vkAcquireNextImageKHR(_deviceInfo.logicalDevice, _swapchainInfo.swapchain, std::numeric_limits<uint64_t>::max(), _imageAvailableSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore waitSemaphores[] = {_imageAvailable};
+    VkSemaphore waitSemaphores[] = {_imageAvailableSemaphores[_currentFrame]};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
@@ -111,11 +119,11 @@ void Renderer::DrawFrame()
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &_commandBuffers[imageIndex];
 
-    VkSemaphore signalSemaphores[] = {_renderFinished};
+    VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[_currentFrame]};
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(_deviceInfo.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VkResult::VK_SUCCESS)
+    if (vkQueueSubmit(_deviceInfo.graphicsQueue, 1, &submitInfo, _inFlightFences[_currentFrame]) != VkResult::VK_SUCCESS)
     {
         throw std::runtime_error("Failed to submit draw command buffer to graphics queue.");
     }
@@ -131,6 +139,7 @@ void Renderer::DrawFrame()
     presentInfo.pImageIndices = &imageIndex;
 
     vkQueuePresentKHR(_deviceInfo.presentQueue, &presentInfo);
+    _currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void Renderer::initVulkan()
@@ -264,14 +273,28 @@ void Renderer::createCommandBuffers()
     }
 }
 
-void Renderer::createSemaphores()
+void Renderer::createSyncObjects()
 {
+    _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
     VkSemaphoreCreateInfo semaphoreInfo = {};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    if (vkCreateSemaphore(_deviceInfo.logicalDevice, &semaphoreInfo, nullptr, &_imageAvailable) != VkResult::VK_SUCCESS 
-        || vkCreateSemaphore(_deviceInfo.logicalDevice, &semaphoreInfo, nullptr, &_renderFinished) != VkResult::VK_SUCCESS)
+    VkFenceCreateInfo fenceInfo = {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    // by default, fences are created in the unsignaled state. That means that vkWaitForFences will wait forever if we haven't used the fence before. 
+    // To solve that, we can change the fence creation to initialize it in the signaled state as if we had rendered an initial frame that finished:
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        throw std::runtime_error("Failed to create render semaphores.");
+        if (vkCreateSemaphore(_deviceInfo.logicalDevice, &semaphoreInfo, nullptr, &_imageAvailableSemaphores[i]) != VkResult::VK_SUCCESS || 
+            vkCreateSemaphore(_deviceInfo.logicalDevice, &semaphoreInfo, nullptr, &_renderFinishedSemaphores[i]) != VkResult::VK_SUCCESS || 
+            vkCreateFence(_deviceInfo.logicalDevice, &fenceInfo, nullptr, &_inFlightFences[i]) != VkResult::VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create render semaphores.");
+        }
     }
 }

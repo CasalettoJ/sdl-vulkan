@@ -22,24 +22,30 @@ class Renderer
     void DrawFrame();
 
   private:
-    const int WIDTH = 800, HEIGHT = 600;
+    const int WIDTH = 800, HEIGHT = 600, MAX_FRAMES_IN_FLIGHT = 2;
 
     VkInstance _instance;
     SDL_Window *_window;
     VkSurfaceKHR _mainSurface;
+
     RenderDevice::DeviceContainer _deviceInfo;
     Swapchain::SwapchainContainer _swapchainInfo;
     Pipeline::ConstructedPipeline _demoPipeline;
+
     VkCommandPool _commandPool;
     std::vector<VkCommandBuffer> _commandBuffers;
-    VkSemaphore _imageAvailable;
-    VkSemaphore _renderFinished;
+
+    std::vector<VkSemaphore> _imageAvailableSemaphores;
+    std::vector<VkSemaphore> _renderFinishedSemaphores;
+    std::vector<VkFence> _inFlightFences;
+    uint _currentFrame = 0;
+
 
     void initVulkan();
     void createMainSurface();
     void createCommandPool();
     void createCommandBuffers();
-    void createSemaphores();
+    void createSyncObjects();
 };
 
 #endif
