@@ -85,17 +85,17 @@ Renderer::~Renderer()
 void Renderer::RecreateSwapchain()
 {
     vkDeviceWaitIdle(_deviceInfo.logicalDevice);
-    Swapchain::SwapchainContainer newSwapchain = Swapchain::CreateSwapchain(_window, _deviceInfo.physicalDevice, _deviceInfo.logicalDevice, _mainSurface, _swapchainInfo.swapchain);
-    Pipeline::ConstructedPipeline newPipeline = Pipeline::CreateGraphicsPipeline(_deviceInfo.logicalDevice, newSwapchain.extent, newSwapchain.format);
-    newSwapchain.framebuffers = Swapchain::CreateFramebuffers(_deviceInfo.logicalDevice, newSwapchain.extent, newSwapchain.imageViews, newPipeline.renderPass);
-    std::vector<VkCommandBuffer> newCommandBuffers = createCommandBuffers();
     swapchainCleanup();
+
     std::cout << "Setting new swapchain..." << std::endl;
-    _swapchainInfo = newSwapchain;
+    _swapchainInfo = Swapchain::CreateSwapchain(_window, _deviceInfo.physicalDevice, _deviceInfo.logicalDevice, _mainSurface, _swapchainInfo.swapchain);
+
     std::cout << "Setting new pipeline..." << std::endl;
-    _demoPipeline = newPipeline;
+    _demoPipeline = Pipeline::CreateGraphicsPipeline(_deviceInfo.logicalDevice, _swapchainInfo.extent, _swapchainInfo.format);
+    _swapchainInfo.framebuffers = Swapchain::CreateFramebuffers(_deviceInfo.logicalDevice, _swapchainInfo.extent, _swapchainInfo.imageViews, _demoPipeline.renderPass);
+
     std::cout << "Setting new command buffers..." << std::endl;
-    _commandBuffers = newCommandBuffers;
+    _commandBuffers = createCommandBuffers();
 }
 
 void Renderer::DrawFrame()
