@@ -52,7 +52,7 @@ bool Game::handleEvent(SDL_Event e)
         switch (e.window.event)
         {
             case SDL_WINDOWEVENT_RESIZED:
-                // _renderer.RecreateSwapchain();
+                _renderer.RecreateSwapchain();
                 break;
         }
         break;
