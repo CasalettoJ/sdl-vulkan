@@ -38,7 +38,6 @@ void Game::Run()
         }
         update();
         render();
-        vkDeviceWaitIdle(_renderer.GetDevice());
     }
 }
 
