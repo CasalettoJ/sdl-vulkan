@@ -52,8 +52,8 @@ Renderer::Renderer()
 
     // Command pool and command buffers
     std::cout << "Setting up command pool and command buffers..." << std::endl;
-    _commandPool = createCommandPool();
-    _commandBuffers = createCommandBuffers();
+    _commandPool = createCommandPool(_deviceInfo.physicalDevice, _deviceInfo.logicalDevice, _mainSurface);
+    _commandBuffers = createCommandBuffers(_deviceInfo.logicalDevice, _commandPool, _swapchainInfo.extent, _demoPipeline.renderPass, _swapchainInfo.framebuffers);
 
     // Create semaphores used for rendering
     std::cout << "Creating render semaphores..." << std::endl;
@@ -95,7 +95,7 @@ void Renderer::RecreateSwapchain()
     _swapchainInfo.framebuffers = Swapchain::CreateFramebuffers(_deviceInfo.logicalDevice, _swapchainInfo.extent, _swapchainInfo.imageViews, _demoPipeline.renderPass);
 
     std::cout << "Setting new command buffers..." << std::endl;
-    _commandBuffers = createCommandBuffers();
+    _commandBuffers = createCommandBuffers(_deviceInfo.logicalDevice, _commandPool, _swapchainInfo.extent, _demoPipeline.renderPass, _swapchainInfo.framebuffers);
 }
 
 void Renderer::DrawFrame()
@@ -228,10 +228,10 @@ void Renderer::createMainSurface()
 
 // We have to create a command pool before we can create command buffers.
 // Command pools manage the memory that is used to store the buffers and command buffers are allocated from them.
-VkCommandPool Renderer::createCommandPool()
+VkCommandPool Renderer::createCommandPool(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface)
 {
     VkCommandPool commandPool;
-    QueueFamily::QueueFamilyIndices queueFamilyIndices = QueueFamily::findQueueFamilies(_deviceInfo.physicalDevice, _mainSurface);
+    QueueFamily::QueueFamilyIndices queueFamilyIndices = QueueFamily::findQueueFamilies(physicalDevice, surface);
 
     VkCommandPoolCreateInfo commandPoolInfo = {};
     commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -240,7 +240,7 @@ VkCommandPool Renderer::createCommandPool()
     // We're going to record commands for drawing, which is why we've chosen the graphics queue family.
     commandPoolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 
-    if (vkCreateCommandPool(_deviceInfo.logicalDevice, &commandPoolInfo, nullptr, &commandPool) != VkResult::VK_SUCCESS)
+    if (vkCreateCommandPool(logicalDevice, &commandPoolInfo, nullptr, &commandPool) != VkResult::VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create command pool.");
     }
@@ -248,17 +248,17 @@ VkCommandPool Renderer::createCommandPool()
     return commandPool;
 }
 
-std::vector<VkCommandBuffer> Renderer::createCommandBuffers()
+std::vector<VkCommandBuffer> Renderer::createCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, VkExtent2D extent, VkRenderPass renderPass, std::vector<VkFramebuffer> framebuffers)
 {
-    std::vector<VkCommandBuffer> commandBuffers(_swapchainInfo.framebuffers.size());
+    std::vector<VkCommandBuffer> commandBuffers(framebuffers.size());
 
     VkCommandBufferAllocateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    bufferInfo.commandPool = _commandPool;
+    bufferInfo.commandPool = commandPool;
     bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     bufferInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
 
-    if (vkAllocateCommandBuffers(_deviceInfo.logicalDevice, &bufferInfo, commandBuffers.data()) != VkResult::VK_SUCCESS)
+    if (vkAllocateCommandBuffers(logicalDevice, &bufferInfo, commandBuffers.data()) != VkResult::VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create command buffers.");
     }
@@ -276,9 +276,9 @@ std::vector<VkCommandBuffer> Renderer::createCommandBuffers()
 
         VkRenderPassBeginInfo renderPassInfo = {};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = _demoPipeline.renderPass;
-        renderPassInfo.framebuffer = _swapchainInfo.framebuffers[i];
-        renderPassInfo.renderArea.extent = _swapchainInfo.extent;
+        renderPassInfo.renderPass = renderPass;
+        renderPassInfo.framebuffer = framebuffers[i];
+        renderPassInfo.renderArea.extent = extent;
         renderPassInfo.renderArea.offset = {0, 0};
 
         VkClearValue clearValue = {0.0f, 0.0f, 0.0f, 1.0f};
