@@ -11,6 +11,12 @@
 #include "renderdevice.h"
 #include "pipeline.h"
 
+struct SynchronizationObjects {
+  std::vector<VkSemaphore> imageAvailableSemaphores;
+  std::vector<VkSemaphore> renderFinishedSemaphores;
+  std::vector<VkFence> inFlightFences;
+};
+
 class Renderer
 {
   public:
@@ -19,7 +25,9 @@ class Renderer
     SDL_Window *GetWindow() { return _window; }
     VkInstance GetInstance() { return _instance; }
     VkSurfaceKHR GetMainSurface() { return _mainSurface; }
+    VkDevice GetDevice() { return _deviceInfo.logicalDevice; }
     void DrawFrame();
+    void RecreateSwapchain();
 
   private:
     const int WIDTH = 800, HEIGHT = 600, MAX_FRAMES_IN_FLIGHT = 2;
@@ -31,21 +39,19 @@ class Renderer
     RenderDevice::DeviceContainer _deviceInfo;
     Swapchain::SwapchainContainer _swapchainInfo;
     Pipeline::ConstructedPipeline _demoPipeline;
+    SynchronizationObjects _syncObjects;
 
     VkCommandPool _commandPool;
     std::vector<VkCommandBuffer> _commandBuffers;
 
-    std::vector<VkSemaphore> _imageAvailableSemaphores;
-    std::vector<VkSemaphore> _renderFinishedSemaphores;
-    std::vector<VkFence> _inFlightFences;
     uint _currentFrame = 0;
-
 
     void initVulkan();
     void createMainSurface();
-    void createCommandPool();
-    void createCommandBuffers();
-    void createSyncObjects();
+    VkCommandPool createCommandPool();
+    std::vector<VkCommandBuffer> createCommandBuffers();
+    SynchronizationObjects createSyncObjects();
+    void swapchainCleanup();
 };
 
 #endif

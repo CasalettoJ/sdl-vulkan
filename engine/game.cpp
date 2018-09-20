@@ -23,21 +23,22 @@ Game::~Game()
 void Game::Run()
 {
     std::cout << "Running Game" << std::endl;
-    bool _quit = false;
+    bool quit = false;
     SDL_Event e;
     while (true)
     {
         while (SDL_PollEvent(&e))
         {
             bool shouldQuit = !handleEvent(e);
-            _quit = _quit ? _quit : shouldQuit;
+            quit = quit ? quit : shouldQuit;
         }
-        if (_quit)
+        if (quit)
         {
             break;
         }
         update();
         render();
+        vkDeviceWaitIdle(_renderer.GetDevice());
     }
 }
 
@@ -47,6 +48,14 @@ bool Game::handleEvent(SDL_Event e)
     {
     case SDL_QUIT:
         return false;
+    case SDL_WINDOWEVENT:
+        switch (e.window.event)
+        {
+            case SDL_WINDOWEVENT_RESIZED:
+                // _renderer.RecreateSwapchain();
+                break;
+        }
+        break;
     }
     return true;
 }

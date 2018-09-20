@@ -123,9 +123,9 @@ VkExtent2D Swapchain::ChooseSwapExtent(VkSurfaceCapabilitiesKHR capabilities, SD
     return VkExtent2D{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 }
 
-Swapchain::SwapchainContainer Swapchain::CreateSwapchain(SDL_Window *window, VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface)
+Swapchain::SwapchainContainer Swapchain::CreateSwapchain(SDL_Window *window, VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface, VkSwapchainKHR oldSwapchain)
 {
-    SwapchainSupportDetails supportDetails = Swapchain::QuerySwapchainSupport(physicalDevice, surface);
+    Swapchain::SwapchainSupportDetails supportDetails = Swapchain::QuerySwapchainSupport(physicalDevice, surface);
 
     VkSurfaceFormatKHR format = Swapchain::ChooseSwapSurfaceFormat(supportDetails.formats);
     VkPresentModeKHR presentationMode = Swapchain::ChooseSwapPresentMode(supportDetails.presentModes);
@@ -156,7 +156,7 @@ Swapchain::SwapchainContainer Swapchain::CreateSwapchain(SDL_Window *window, VkP
     createSwapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     createSwapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createSwapchainInfo.preTransform = supportDetails.capabilities.currentTransform;
-    createSwapchainInfo.oldSwapchain = VK_NULL_HANDLE; // Set to null for now, eventually will be re-set.
+    createSwapchainInfo.oldSwapchain = oldSwapchain;
 
     QueueFamily::QueueFamilyIndices queueFamilyIndices = QueueFamily::findQueueFamilies(physicalDevice, surface);
     std::set<uint32_t> queueFamilyIndicesSet;

@@ -28,7 +28,7 @@ SwapchainSupportDetails QuerySwapchainSupport(VkPhysicalDevice device, VkSurface
 VkSurfaceFormatKHR ChooseSwapSurfaceFormat(std::vector<VkSurfaceFormatKHR> availableFormats);
 VkPresentModeKHR ChooseSwapPresentMode(std::vector<VkPresentModeKHR> availablePresentModes);
 VkExtent2D ChooseSwapExtent(VkSurfaceCapabilitiesKHR capabilities, SDL_Window *window);
-SwapchainContainer CreateSwapchain(SDL_Window *window, VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface);
+SwapchainContainer CreateSwapchain(SDL_Window *window, VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface, VkSwapchainKHR oldSwapchain);
 std::vector<VkImageView> CreateImageViews(VkDevice logicalDevice, VkFormat swapchainFormat, std::vector<VkImage> swapchainImages);
 std::vector<VkFramebuffer> CreateFramebuffers(VkDevice logicalDevice, VkExtent2D extent, std::vector<VkImageView> imageViews, VkRenderPass renderPass);
 } // namespace Swapchain
