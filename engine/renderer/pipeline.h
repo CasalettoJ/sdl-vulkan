@@ -6,6 +6,8 @@
 #include <string>
 #include <vulkan/vulkan.h>
 
+#include "vertex.h"
+
 namespace Pipeline
 {
     struct ConstructedPipeline
@@ -13,6 +15,7 @@ namespace Pipeline
         VkPipelineLayout layout;
         VkRenderPass renderPass;
         VkPipeline pipeline;
+        Vertex::VertexBuffer vertexBuffer;
     };
 
     ConstructedPipeline CreateGraphicsPipeline(const VkDevice &logicalDevice, const VkExtent2D &extent, const VkFormat &format);

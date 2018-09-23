@@ -49,7 +49,7 @@ class Renderer
     void initVulkan();
     void createMainSurface();
     VkCommandPool createCommandPool(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface);
-    std::vector<VkCommandBuffer> createCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, VkExtent2D extent, VkRenderPass renderPass, std::vector<VkFramebuffer> frameBuffers);
+    std::vector<VkCommandBuffer> createCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, VkExtent2D extent, VkRenderPass renderPass, std::vector<VkFramebuffer> frameBuffers, Vertex::VertexBuffer vertexBuffer);
     SynchronizationObjects createSyncObjects();
     void swapchainCleanup();
 };

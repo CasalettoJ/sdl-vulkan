@@ -13,6 +13,8 @@ renderer
         swapchain.h
         pipeline.cpp
         pipeline.h
+        vertex.cpp
+        vertex.h
 )
 target_include_directories(renderer INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(renderer PROPERTIES CXX_STANDARD 17)

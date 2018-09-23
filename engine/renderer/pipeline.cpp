@@ -4,6 +4,7 @@
 
 #include "pipeline.h"
 #include "../systems/fileio.h"
+#include "vertex.h"
 
 Pipeline::ConstructedPipeline Pipeline::CreateGraphicsPipeline(const VkDevice &logicalDevice, const VkExtent2D &extent, const VkFormat &format)
 {
@@ -46,11 +47,15 @@ Pipeline::ConstructedPipeline Pipeline::CreateGraphicsPipeline(const VkDevice &l
     VkPipelineShaderStageCreateInfo pipelineShaderSteps[] = {vertCreateInfo, fragCreateInfo};
 
     // 3 Vertex Input
-    // https://vulkan-tutorial.com/Drawing_a_triangle/Graphics_pipeline_basics/Fixed_functions
+    VkVertexInputBindingDescription vertexDescription = Vertex::CreateBindingDescription();
+    std::array<VkVertexInputAttributeDescription, Vertex::VERTEX_PROPERTIES_COUNT> vertexAttributes = Vertex::CreateAttributeDescriptions();
+
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &vertexDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexAttributes.size());
+    vertexInputInfo.pVertexAttributeDescriptions = vertexAttributes.data();
 
     // 4 Input Assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};

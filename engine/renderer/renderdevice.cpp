@@ -171,3 +171,22 @@ VkQueue RenderDevice::GetQueue(int queueIndex, VkDevice logicalDevice)
     vkGetDeviceQueue(logicalDevice, queueIndex, 0, &queue);
     return queue;
 }
+
+uint32_t RenderDevice::FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
+{
+    // The VkPhysicalDeviceMemoryProperties structure has two arrays memoryTypes and memoryHeaps. 
+    // Memory heaps are distinct memory resources like dedicated VRAM and swap space in RAM for when VRAM runs out
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+    
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+    {
+        if (typeFilter & (1 << i) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+        {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("No suitable memory type available.");
+
+}

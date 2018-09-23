@@ -13,6 +13,8 @@
 #include "swapchain.h"
 #include "queuefamily.h"
 #include "pipeline.h"
+#include "vertex.h"
+#include "../constants.h"
 
 // TODO https://cpppatterns.com/patterns/rule-of-five.html https://cpppatterns.com/patterns/copy-and-swap.html
 
@@ -50,10 +52,17 @@ Renderer::Renderer()
     std::cout << "Setting up framebuffers..." << std::endl;
     _swapchainInfo.framebuffers = Swapchain::CreateFramebuffers(_deviceInfo.logicalDevice, _swapchainInfo.extent, _swapchainInfo.imageViews, _demoPipeline.renderPass);
 
-    // Command pool and command buffers
-    std::cout << "Setting up command pool and command buffers..." << std::endl;
+    // Command pool
+    std::cout << "Setting up command pool..." << std::endl;
     _commandPool = createCommandPool(_deviceInfo.physicalDevice, _deviceInfo.logicalDevice, _mainSurface);
-    _commandBuffers = createCommandBuffers(_deviceInfo.logicalDevice, _commandPool, _swapchainInfo.extent, _demoPipeline.renderPass, _swapchainInfo.framebuffers);
+
+    // Vertex Buffer with triangle
+    std::cout << "Setting up vertex buffer..." << std::endl;
+    _demoPipeline.vertexBuffer = Vertex::CreateVertexBuffer(_deviceInfo.physicalDevice, _deviceInfo.logicalDevice, TRIANGLE_VERTICES);
+
+    // Command buffers
+    std::cout << "Setting up command buffers..." << std::endl;
+    _commandBuffers = createCommandBuffers(_deviceInfo.logicalDevice, _commandPool, _swapchainInfo.extent, _demoPipeline.renderPass, _swapchainInfo.framebuffers, _demoPipeline.vertexBuffer);
 
     // Create semaphores used for rendering
     std::cout << "Creating render semaphores..." << std::endl;
@@ -72,6 +81,10 @@ Renderer::~Renderer()
         vkDestroyFence(_deviceInfo.logicalDevice, _syncObjects.inFlightFences[i], nullptr);
     }
     swapchainCleanup();
+    std::cout << "Destroying current vertex buffer..." << std::endl;
+    vkDestroyBuffer(_deviceInfo.logicalDevice, _demoPipeline.vertexBuffer.buffer, nullptr);
+    std::cout << "Freeing current vertex buffer memory..." << std::endl;
+    vkFreeMemory(_deviceInfo.logicalDevice, _demoPipeline.vertexBuffer.memory, nullptr);
     std::cout << "Destroying command pool..." << std::endl;
     vkDestroyCommandPool(_deviceInfo.logicalDevice, _commandPool, nullptr);
     std::cout << "Destroying logical device..." << std::endl;
@@ -85,6 +98,7 @@ Renderer::~Renderer()
 void Renderer::RecreateSwapchain()
 {
     vkDeviceWaitIdle(_deviceInfo.logicalDevice);
+    Vertex::VertexBuffer vertexBuffer = _demoPipeline.vertexBuffer;
     swapchainCleanup();
 
     std::cout << "Setting new swapchain..." << std::endl;
@@ -92,10 +106,11 @@ void Renderer::RecreateSwapchain()
 
     std::cout << "Setting new pipeline..." << std::endl;
     _demoPipeline = Pipeline::CreateGraphicsPipeline(_deviceInfo.logicalDevice, _swapchainInfo.extent, _swapchainInfo.format);
+    _demoPipeline.vertexBuffer = vertexBuffer;
     _swapchainInfo.framebuffers = Swapchain::CreateFramebuffers(_deviceInfo.logicalDevice, _swapchainInfo.extent, _swapchainInfo.imageViews, _demoPipeline.renderPass);
 
     std::cout << "Setting new command buffers..." << std::endl;
-    _commandBuffers = createCommandBuffers(_deviceInfo.logicalDevice, _commandPool, _swapchainInfo.extent, _demoPipeline.renderPass, _swapchainInfo.framebuffers);
+    _commandBuffers = createCommandBuffers(_deviceInfo.logicalDevice, _commandPool, _swapchainInfo.extent, _demoPipeline.renderPass, _swapchainInfo.framebuffers, _demoPipeline.vertexBuffer);
 }
 
 void Renderer::DrawFrame()
@@ -248,7 +263,7 @@ VkCommandPool Renderer::createCommandPool(VkPhysicalDevice physicalDevice, VkDev
     return commandPool;
 }
 
-std::vector<VkCommandBuffer> Renderer::createCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, VkExtent2D extent, VkRenderPass renderPass, std::vector<VkFramebuffer> framebuffers)
+std::vector<VkCommandBuffer> Renderer::createCommandBuffers(VkDevice logicalDevice, VkCommandPool commandPool, VkExtent2D extent, VkRenderPass renderPass, std::vector<VkFramebuffer> framebuffers, Vertex::VertexBuffer vertexBuffer)
 {
     std::vector<VkCommandBuffer> commandBuffers(framebuffers.size());
 
@@ -287,10 +302,13 @@ std::vector<VkCommandBuffer> Renderer::createCommandBuffers(VkDevice logicalDevi
 
         vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, _demoPipeline.pipeline);
+        VkBuffer buffers[] = {vertexBuffer.buffer};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, buffers, offsets);
         // 3 - 3 vertices to draw for triangle
         // 1 - not using instanced rendering
         // 0 - offset for vertex buffer and instanced rendering
-        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+        vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(TRIANGLE_VERTICES.size()), 1, 0, 0);
         vkCmdEndRenderPass(commandBuffers[i]);
 
         if (vkEndCommandBuffer(commandBuffers[i]) != VkResult::VK_SUCCESS)
